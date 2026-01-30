@@ -69,6 +69,8 @@ def generate_docx_bytes(*, city: Optional[str], author_name: Optional[str], date
     # Title paragraph
     p_title = doc.add_paragraph()
     p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_title.paragraph_format.space_before = Pt(0)
+    p_title.paragraph_format.space_after = Pt(0)
     r_title = p_title.add_run(title)
     r_title.bold = True
     _set_times_new_roman_12pt(r_title)
@@ -81,6 +83,8 @@ def generate_docx_bytes(*, city: Optional[str], author_name: Optional[str], date
         p = doc.add_paragraph()
         # python-docx justification support varies; this is the closest setting.
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(0)
         r = p.add_run(line)
         _set_times_new_roman_12pt(r)
 

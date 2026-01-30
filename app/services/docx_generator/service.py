@@ -4,7 +4,7 @@ import json
 from typing import Any, Dict, Optional
 
 from docx import Document
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.shared import Pt
 
 
@@ -68,9 +68,12 @@ def generate_docx_bytes(*, city: Optional[str], author_name: Optional[str], date
 
     # Title paragraph
     p_title = doc.add_paragraph()
+    p_title.style = "No Spacing"
     p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_title.paragraph_format.space_before = Pt(0)
     p_title.paragraph_format.space_after = Pt(0)
+    p_title.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
+    p_title.paragraph_format.line_spacing = Pt(12)
     r_title = p_title.add_run(title)
     r_title.bold = True
     _set_times_new_roman_12pt(r_title)
@@ -81,10 +84,12 @@ def generate_docx_bytes(*, city: Optional[str], author_name: Optional[str], date
 
     for line in lines:
         p = doc.add_paragraph()
+        p.style = "No Spacing"
         # python-docx justification support varies; this is the closest setting.
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
         p.paragraph_format.space_before = Pt(0)
         p.paragraph_format.space_after = Pt(0)
+        p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
         r = p.add_run(line)
         _set_times_new_roman_12pt(r)
 

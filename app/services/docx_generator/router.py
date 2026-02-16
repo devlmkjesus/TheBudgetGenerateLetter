@@ -36,12 +36,15 @@ def create_docx(payload: DocxRequest):
 
     file_name = f"{base_name}.docx"
 
-    docx_bytes = generate_docx_bytes(
-        city=payload.city,
-        author_name=payload.authorName,
-        date=payload.date,
-        body=resolved_body,
-    )
+    try:
+        docx_bytes = generate_docx_bytes(
+            city=payload.city,
+            author_name=payload.authorName,
+            date=payload.date,
+            body=resolved_body,
+        )
+    except ValueError as e:
+        return JSONResponse(status_code=400, content={"success": False, "error": str(e)})
 
     if payload.returnBase64:
         return {

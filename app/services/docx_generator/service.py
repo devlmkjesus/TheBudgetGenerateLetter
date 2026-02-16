@@ -58,20 +58,30 @@ def _set_times_new_roman_12pt(run):
 
 
 _DIARY_VALIDATION_PATTERN = re.compile(r"\b(?:the\s+diary|diary)\b", re.IGNORECASE)
+_DIARY_MARKUP_PATTERN = re.compile(r"(\*{1,2}|_{1,2})(\s*(?:the\s+diary|diary)\s*)\1", re.IGNORECASE)
 
 
-def validate_diary_casing(text: str) -> None:
+def strip_diary_markup(text: str) -> str:
     if not text:
-        return
+        return text
 
-    for match in _DIARY_VALIDATION_PATTERN.finditer(text):
-        original = match.group(0)
-        lowered = original.lower()
+    def _repl(match: re.Match[str]) -> str:
+        return match.group(2)
 
-        if lowered == "diary" and original != "Diary":
-            raise ValueError('Invalid casing: use "Diary" (capital D).')
-        if lowered == "the diary" and original != "The Diary":
-            raise ValueError('Invalid casing: use "The Diary" (capital T and D).')
+    return _DIARY_MARKUP_PATTERN.sub(_repl, text)
+
+
+def normalize_diary_casing(text: str) -> str:
+    if not text:
+        return text
+
+    def _repl(match: re.Match[str]) -> str:
+        lowered = match.group(0).lower()
+        if lowered == "the diary":
+            return "The Diary"
+        return "Diary"
+
+    return _DIARY_VALIDATION_PATTERN.sub(_repl, text)
 
 
 def add_runs_with_diary_italics(paragraph, text: str) -> None:
@@ -122,7 +132,8 @@ def generate_docx_bytes(*, city: Optional[str], author_name: Optional[str], date
 
     # Body paragraphs (split by line breaks)
     full_text = f"{safe_date} – {body_text}" if body_text else f"{safe_date} – "
-    validate_diary_casing(full_text)
+    full_text = strip_diary_markup(full_text)
+    full_text = normalize_diary_casing(full_text)
     lines = str(full_text).splitlines() or [""]
 
     for line in lines:

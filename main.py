@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import API_HOST, API_PORT, API_RELOAD, CORS_ORIGINS
-from app.services.docx_generator.router import router as docx_generator_router
+from app.services.router import api_router
 
 app = FastAPI(
     title="DOCX Generator API",
@@ -34,7 +34,7 @@ def health():
     return {"ok": True}
 
 
-app.include_router(docx_generator_router, prefix="/docx-generator", tags=["DOCX Generator"])
+app.include_router(api_router)
 
 
 if __name__ == "__main__":

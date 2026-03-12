@@ -258,7 +258,6 @@ def generate_published_letter_docx_bytes(
     paragraphs = [normalize_diary_casing(strip_diary_markup(p)) for p in paragraphs]
 
     spellcheck_words = _fetch_spellcheck_words()
-    spellcheck_words.append(("Visitors", WD_COLOR_INDEX.YELLOW))
 
     doc = Document()
 

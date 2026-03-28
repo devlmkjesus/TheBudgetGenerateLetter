@@ -19,6 +19,8 @@ DOCX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml
 
 _DIARY_PATTERN = re.compile(r"\b(?:the\s+diary|diary)\b", re.IGNORECASE)
 _DIARY_MARKUP_PATTERN = re.compile(r"(\*{1,2}|_{1,2})(\s*(?:the\s+diary|diary)\s*)\1", re.IGNORECASE)
+_BUDGET_PATTERN = re.compile(r"\b(?:the\s+budget|budget)\b", re.IGNORECASE)
+_BUDGET_MARKUP_PATTERN = re.compile(r"(\*{1,2}|_{1,2})(\s*(?:the\s+budget|budget)\s*)\1", re.IGNORECASE)
 
 
 def to_base64(data: bytes) -> str:
@@ -46,6 +48,29 @@ def normalize_diary_casing(text: str) -> str:
         return "Diary"
 
     return _DIARY_PATTERN.sub(_repl, text)
+
+
+def strip_budget_markup(text: str) -> str:
+    if not text:
+        return text
+
+    def _repl(match: re.Match[str]) -> str:
+        return match.group(2)
+
+    return _BUDGET_MARKUP_PATTERN.sub(_repl, text)
+
+
+def normalize_budget_casing(text: str) -> str:
+    if not text:
+        return text
+
+    def _repl(match: re.Match[str]) -> str:
+        lowered = match.group(0).lower()
+        if lowered == "the budget":
+            return "The Budget"
+        return "Budget"
+
+    return _BUDGET_PATTERN.sub(_repl, text)
 
 
 def _set_font(run, *, name: str, size_pt: int, bold: bool = False) -> None:
@@ -201,9 +226,13 @@ def _add_formatted_runs(paragraph, text: str, highlight_spans: List[HighlightSpa
         text = ""
 
     diary_spans = [m.span() for m in _DIARY_PATTERN.finditer(text)]
+    budget_spans = [m.span() for m in _BUDGET_PATTERN.finditer(text)]
 
     boundaries = {0, len(text)}
     for s, e in diary_spans:
+        boundaries.add(s)
+        boundaries.add(e)
+    for s, e in budget_spans:
         boundaries.add(s)
         boundaries.add(e)
     for sp in highlight_spans:
@@ -214,6 +243,12 @@ def _add_formatted_runs(paragraph, text: str, highlight_spans: List[HighlightSpa
 
     def _in_diary(i: int) -> bool:
         for s, e in diary_spans:
+            if s <= i < e:
+                return True
+        return False
+
+    def _in_budget(i: int) -> bool:
+        for s, e in budget_spans:
             if s <= i < e:
                 return True
         return False
@@ -231,7 +266,7 @@ def _add_formatted_runs(paragraph, text: str, highlight_spans: List[HighlightSpa
         r = paragraph.add_run(seg)
         _set_font(r, name="Times New Roman", size_pt=9, bold=False)
 
-        if _in_diary(a):
+        if _in_diary(a) or _in_budget(a):
             r.italic = True
 
         color = _highlight_at(a)
@@ -254,8 +289,11 @@ def generate_published_letter_docx_bytes(
 
     paragraphs = _split_paragraphs(body)
 
-    # Normalize Diary/The Diary before rendering.
-    paragraphs = [normalize_diary_casing(strip_diary_markup(p)) for p in paragraphs]
+    # Normalize Diary/The Diary and Budget/The Budget before rendering.
+    paragraphs = [
+        normalize_budget_casing(normalize_diary_casing(strip_diary_markup(strip_budget_markup(p))))
+        for p in paragraphs
+    ]
 
     spellcheck_words = _fetch_spellcheck_words()
 

@@ -144,6 +144,9 @@ def generate_docx_bytes(*, city: Optional[str], author_name: Optional[str], date
         p.paragraph_format.space_before = Pt(0)
         p.paragraph_format.space_after = Pt(0)
         p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+        p.paragraph_format.left_indent = Inches(0)
+        p.paragraph_format.right_indent = Inches(0)
+        p.paragraph_format.first_line_indent = Inches(0.13)
         add_runs_with_diary_italics(p, line)
 
     buf = io.BytesIO()

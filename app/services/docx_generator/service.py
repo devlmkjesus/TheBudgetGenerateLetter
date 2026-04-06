@@ -98,13 +98,8 @@ def _fetch_spellcheck_words_for_client(client: str) -> list[tuple[str, WD_COLOR_
     if now - cached_ts < _HIGHLIGHT_TTL_SECONDS:
         return list(cached_items)
 
-    def _request_rows(filter_key: str) -> List[Dict[str, Any]]:
-        query = urllib.parse.urlencode(
-            {
-                "select": "Word,HighlightColor,Client",
-                filter_key: f"ilike.*{client}*",
-            }
-        )
+    def _request_rows() -> List[Dict[str, Any]]:
+        query = urllib.parse.urlencode({"select": "Word,HighlightColor,Client"})
         url = f"{supabase_url}/rest/v1/Spellcheck_The_Budget?{query}"
 
         req = urllib.request.Request(
@@ -130,25 +125,18 @@ def _fetch_spellcheck_words_for_client(client: str) -> list[tuple[str, WD_COLOR_
 
         return rows if isinstance(rows, list) else []
 
-    rows = _request_rows("client")
+    rows = _request_rows()
     items: list[tuple[str, WD_COLOR_INDEX]] = []
     for row in rows:
         if not isinstance(row, dict):
+            continue
+        row_client = (row.get("Client") or row.get("client") or "").strip()
+        if client.lower() not in row_client.lower():
             continue
         word = (row.get("Word") or "").strip()
         color = _color_from_supabase(row.get("HighlightColor") or "")
         if word and color:
             items.append((word, color))
-
-    if not items:
-        rows = _request_rows("Client")
-        for row in rows:
-            if not isinstance(row, dict):
-                continue
-            word = (row.get("Word") or "").strip()
-            color = _color_from_supabase(row.get("HighlightColor") or "")
-            if word and color:
-                items.append((word, color))
 
     if "by_client" not in _HIGHLIGHT_CACHE or not isinstance(_HIGHLIGHT_CACHE.get("by_client"), dict):
         _HIGHLIGHT_CACHE["by_client"] = {}

@@ -137,11 +137,11 @@ def _color_from_supabase(value: str) -> Optional[WD_COLOR_INDEX]:
     return None
 
 
-_HIGHLIGHT_CACHE: Dict[str, Any] = {"ts": 0.0, "items": []}
+_HIGHLIGHT_CACHE: Dict[str, Any] = {"by_client": {}}
 _HIGHLIGHT_TTL_SECONDS = 300
 
 
-def _fetch_spellcheck_words() -> List[Tuple[str, WD_COLOR_INDEX]]:
+def _fetch_spellcheck_words_for_client(client: str) -> List[Tuple[str, WD_COLOR_INDEX]]:
     supabase_url = (
         os.getenv("SUPABASE_URL")
         or os.getenv("VITE_SUPABASE_URL")
@@ -156,17 +156,15 @@ def _fetch_spellcheck_words() -> List[Tuple[str, WD_COLOR_INDEX]]:
         return []
 
     now = time.time()
-    cached_ts = float(_HIGHLIGHT_CACHE.get("ts") or 0.0)
+    by_client = _HIGHLIGHT_CACHE.get("by_client") or {}
+    entry = by_client.get(client) or {}
+    cached_ts = float(entry.get("ts") or 0.0)
+    cached_items = entry.get("items") or []
     if now - cached_ts < _HIGHLIGHT_TTL_SECONDS:
-        return list(_HIGHLIGHT_CACHE.get("items") or [])
+        return list(cached_items)
 
-    def _request_rows(filter_key: str) -> List[Dict[str, Any]]:
-        query = urllib.parse.urlencode(
-            {
-                "select": "Word,HighlightColor,Client",
-                filter_key: "ilike.*Budget*",
-            }
-        )
+    def _request_rows() -> List[Dict[str, Any]]:
+        query = urllib.parse.urlencode({"select": "Word,HighlightColor,Client"})
         url = f"{supabase_url}/rest/v1/Spellcheck_The_Budget?{query}"
 
         req = urllib.request.Request(
@@ -192,28 +190,22 @@ def _fetch_spellcheck_words() -> List[Tuple[str, WD_COLOR_INDEX]]:
 
         return rows if isinstance(rows, list) else []
 
-    rows = _request_rows("client")
+    rows = _request_rows()
     items: List[Tuple[str, WD_COLOR_INDEX]] = []
     for row in rows:
         if not isinstance(row, dict):
+            continue
+        row_client = (row.get("Client") or row.get("client") or "").strip()
+        if client.lower() not in row_client.lower():
             continue
         word = (row.get("Word") or "").strip()
         color = _color_from_supabase(row.get("HighlightColor") or "")
         if word and color:
             items.append((word, color))
 
-    if not items:
-        rows = _request_rows("Client")
-        for row in rows:
-            if not isinstance(row, dict):
-                continue
-            word = (row.get("Word") or "").strip()
-            color = _color_from_supabase(row.get("HighlightColor") or "")
-            if word and color:
-                items.append((word, color))
-
-    _HIGHLIGHT_CACHE["ts"] = now
-    _HIGHLIGHT_CACHE["items"] = items
+    if "by_client" not in _HIGHLIGHT_CACHE or not isinstance(_HIGHLIGHT_CACHE.get("by_client"), dict):
+        _HIGHLIGHT_CACHE["by_client"] = {}
+    _HIGHLIGHT_CACHE["by_client"][client] = {"ts": now, "items": items}
     return items
 
 
@@ -311,7 +303,7 @@ def generate_published_letter_docx_bytes(
         for p in paragraphs
     ]
 
-    spellcheck_words = _fetch_spellcheck_words()
+    spellcheck_words = _fetch_spellcheck_words_for_client("Budget")
 
     doc = Document()
 

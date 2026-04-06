@@ -165,7 +165,7 @@ def _fetch_spellcheck_words() -> List[Tuple[str, WD_COLOR_INDEX]]:
     query = urllib.parse.urlencode(
         {
             "select": "Word,HighlightColor,Client",
-            "Client": "ilike.*Budget*",
+            "client": "ilike.*Budget*",
         }
     )
     url = f"{supabase_url}/rest/v1/Spellcheck_The_Budget?{query}"

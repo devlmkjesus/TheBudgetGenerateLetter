@@ -72,7 +72,7 @@ def _color_from_supabase(value: str) -> Optional[WD_COLOR_INDEX]:
     return None
 
 
-_HIGHLIGHT_CACHE: Dict[str, Any] = {"ts": 0.0, "items": []}
+_HIGHLIGHT_CACHE: Dict[str, Any] = {"by_client": {}}
 _HIGHLIGHT_TTL_SECONDS = 300
 
 
@@ -91,15 +91,17 @@ def _fetch_spellcheck_words_for_client(client: str) -> list[tuple[str, WD_COLOR_
         return []
 
     now = time.time()
-    cached_ts = float(_HIGHLIGHT_CACHE.get("ts") or 0.0)
-    cached_items = _HIGHLIGHT_CACHE.get("items") or []
+    by_client = _HIGHLIGHT_CACHE.get("by_client") or {}
+    entry = by_client.get(client) or {}
+    cached_ts = float(entry.get("ts") or 0.0)
+    cached_items = entry.get("items") or []
     if now - cached_ts < _HIGHLIGHT_TTL_SECONDS:
         return list(cached_items)
 
     query = urllib.parse.urlencode(
         {
             "select": "Word,HighlightColor,Client",
-            "Client": f"ilike.*{client}*",
+            "client": f"ilike.*{client}*",
         }
     )
     url = f"{supabase_url}/rest/v1/Spellcheck_The_Budget?{query}"
@@ -134,8 +136,9 @@ def _fetch_spellcheck_words_for_client(client: str) -> list[tuple[str, WD_COLOR_
         if word and color:
             items.append((word, color))
 
-    _HIGHLIGHT_CACHE["ts"] = now
-    _HIGHLIGHT_CACHE["items"] = items
+    if "by_client" not in _HIGHLIGHT_CACHE or not isinstance(_HIGHLIGHT_CACHE.get("by_client"), dict):
+        _HIGHLIGHT_CACHE["by_client"] = {}
+    _HIGHLIGHT_CACHE["by_client"][client] = {"ts": now, "items": items}
     return items
 
 

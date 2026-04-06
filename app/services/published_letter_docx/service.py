@@ -160,47 +160,57 @@ def _fetch_spellcheck_words() -> List[Tuple[str, WD_COLOR_INDEX]]:
     if now - cached_ts < _HIGHLIGHT_TTL_SECONDS:
         return list(_HIGHLIGHT_CACHE.get("items") or [])
 
-    # Supabase REST
-    # Filter to this endpoint's client words only.
-    query = urllib.parse.urlencode(
-        {
-            "select": "Word,HighlightColor,Client",
-            "client": "ilike.*Budget*",
-        }
-    )
-    url = f"{supabase_url}/rest/v1/Spellcheck_The_Budget?{query}"
+    def _request_rows(filter_key: str) -> List[Dict[str, Any]]:
+        query = urllib.parse.urlencode(
+            {
+                "select": "Word,HighlightColor,Client",
+                filter_key: "ilike.*Budget*",
+            }
+        )
+        url = f"{supabase_url}/rest/v1/Spellcheck_The_Budget?{query}"
 
-    req = urllib.request.Request(
-        url,
-        headers={
-            "apikey": supabase_key,
-            "Authorization": f"Bearer {supabase_key}",
-            "Accept": "application/json",
-        },
-        method="GET",
-    )
+        req = urllib.request.Request(
+            url,
+            headers={
+                "apikey": supabase_key,
+                "Authorization": f"Bearer {supabase_key}",
+                "Accept": "application/json",
+            },
+            method="GET",
+        )
 
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            raw = resp.read().decode("utf-8")
-    except Exception:
-        return []
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                raw = resp.read().decode("utf-8")
+        except Exception:
+            return []
 
-    try:
-        import json
+        try:
+            rows = json.loads(raw)
+        except Exception:
+            return []
 
-        rows = json.loads(raw)
-    except Exception:
-        return []
+        return rows if isinstance(rows, list) else []
 
+    rows = _request_rows("client")
     items: List[Tuple[str, WD_COLOR_INDEX]] = []
-    for row in rows if isinstance(rows, list) else []:
+    for row in rows:
         if not isinstance(row, dict):
             continue
         word = (row.get("Word") or "").strip()
         color = _color_from_supabase(row.get("HighlightColor") or "")
         if word and color:
             items.append((word, color))
+
+    if not items:
+        rows = _request_rows("Client")
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            word = (row.get("Word") or "").strip()
+            color = _color_from_supabase(row.get("HighlightColor") or "")
+            if word and color:
+                items.append((word, color))
 
     _HIGHLIGHT_CACHE["ts"] = now
     _HIGHLIGHT_CACHE["items"] = items

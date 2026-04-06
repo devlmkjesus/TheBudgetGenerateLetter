@@ -1,11 +1,16 @@
 import base64
 import io
 import json
+import os
 import re
-from typing import Any, Dict, Optional
+import time
+import urllib.parse
+import urllib.request
+from typing import Any, Dict, List, Optional, Tuple
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
+from docx.enum.text import WD_COLOR_INDEX
 from docx.shared import Inches, Pt
 
 DOCX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -54,6 +59,106 @@ def normalize_body_to_string(body: Any) -> str:
 def _set_times_new_roman_12pt(run):
     run.font.name = "Times New Roman"
     run.font.size = Pt(12)
+
+
+def _color_from_supabase(value: str) -> Optional[WD_COLOR_INDEX]:
+    if not value:
+        return None
+    v = value.strip().lower()
+    if v == "yellow":
+        return WD_COLOR_INDEX.YELLOW
+    if v == "red":
+        return WD_COLOR_INDEX.RED
+    return None
+
+
+_HIGHLIGHT_CACHE: Dict[str, Any] = {"ts": 0.0, "items": []}
+_HIGHLIGHT_TTL_SECONDS = 300
+
+
+def _fetch_spellcheck_words_for_client(client: str) -> list[tuple[str, WD_COLOR_INDEX]]:
+    supabase_url = (
+        os.getenv("SUPABASE_URL")
+        or os.getenv("VITE_SUPABASE_URL")
+        or ""
+    ).strip().rstrip("/")
+    supabase_key = (
+        os.getenv("SUPABASE_ANON_KEY")
+        or os.getenv("VITE_SUPABASE_ANON_KEY")
+        or ""
+    ).strip()
+    if not supabase_url or not supabase_key:
+        return []
+
+    now = time.time()
+    cached_ts = float(_HIGHLIGHT_CACHE.get("ts") or 0.0)
+    cached_items = _HIGHLIGHT_CACHE.get("items") or []
+    if now - cached_ts < _HIGHLIGHT_TTL_SECONDS:
+        return list(cached_items)
+
+    query = urllib.parse.urlencode(
+        {
+            "select": "Word,HighlightColor,Client",
+            "Client": f"ilike.*{client}*",
+        }
+    )
+    url = f"{supabase_url}/rest/v1/Spellcheck_The_Budget?{query}"
+
+    req = urllib.request.Request(
+        url,
+        headers={
+            "apikey": supabase_key,
+            "Authorization": f"Bearer {supabase_key}",
+            "Accept": "application/json",
+        },
+        method="GET",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw = resp.read().decode("utf-8")
+    except Exception:
+        return []
+
+    try:
+        rows = json.loads(raw)
+    except Exception:
+        return []
+
+    items: list[tuple[str, WD_COLOR_INDEX]] = []
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict):
+            continue
+        word = (row.get("Word") or "").strip()
+        color = _color_from_supabase(row.get("HighlightColor") or "")
+        if word and color:
+            items.append((word, color))
+
+    _HIGHLIGHT_CACHE["ts"] = now
+    _HIGHLIGHT_CACHE["items"] = items
+    return items
+
+
+def _find_highlight_spans(
+    text: str,
+    words: List[Tuple[str, WD_COLOR_INDEX]],
+) -> List[Tuple[int, int, WD_COLOR_INDEX]]:
+    if not text or not words:
+        return []
+
+    spans: List[Tuple[int, int, WD_COLOR_INDEX]] = []
+    for word, color in words:
+        escaped = re.escape(word)
+        if re.fullmatch(r"[A-Za-z0-9']+", word):
+            pattern = re.compile(rf"\b{escaped}\b", re.IGNORECASE)
+        else:
+            pattern = re.compile(escaped, re.IGNORECASE)
+
+        for m in pattern.finditer(text):
+            spans.append((m.start(), m.end(), color))
+
+    spans.sort(key=lambda s: (s[0], s[1]))
+    return spans
 
 
 _DIARY_VALIDATION_PATTERN = re.compile(r"\b(?:the\s+diary|diary)\b", re.IGNORECASE)
@@ -107,6 +212,53 @@ def add_runs_with_diary_italics(paragraph, text: str) -> None:
         _set_times_new_roman_12pt(r)
 
 
+def add_runs_with_diary_italics_and_highlight(
+    paragraph,
+    text: str,
+    highlight_spans: List[Tuple[int, int, WD_COLOR_INDEX]],
+) -> None:
+    if text is None:
+        text = ""
+
+    diary_spans = [m.span() for m in _DIARY_VALIDATION_PATTERN.finditer(text)]
+
+    boundaries = {0, len(text)}
+    for s, e in diary_spans:
+        boundaries.add(s)
+        boundaries.add(e)
+    for s, e, _ in highlight_spans:
+        boundaries.add(s)
+        boundaries.add(e)
+
+    points = sorted(boundaries)
+
+    def _in_diary(i: int) -> bool:
+        for s, e in diary_spans:
+            if s <= i < e:
+                return True
+        return False
+
+    def _highlight_at(i: int) -> Optional[WD_COLOR_INDEX]:
+        for s, e, color in highlight_spans:
+            if s <= i < e:
+                return color
+        return None
+
+    for a, b in zip(points, points[1:]):
+        if a == b:
+            continue
+        seg = text[a:b]
+        r = paragraph.add_run(seg)
+        _set_times_new_roman_12pt(r)
+
+        if _in_diary(a):
+            r.italic = True
+
+        color = _highlight_at(a)
+        if color is not None:
+            r.font.highlight_color = color
+
+
 def generate_docx_bytes(*, city: Optional[str], author_name: Optional[str], date: Optional[str], body: Any) -> bytes:
     safe_city = city or "City"
     safe_author = author_name or "Name"
@@ -135,6 +287,8 @@ def generate_docx_bytes(*, city: Optional[str], author_name: Optional[str], date
     full_text = normalize_diary_casing(full_text)
     lines = str(full_text).splitlines() or [""]
 
+    spellcheck_words = _fetch_spellcheck_words_for_client("Diary")
+
     for line in lines:
         p = doc.add_paragraph()
         p.style = "No Spacing"
@@ -146,7 +300,8 @@ def generate_docx_bytes(*, city: Optional[str], author_name: Optional[str], date
         p.paragraph_format.left_indent = Inches(0)
         p.paragraph_format.right_indent = Inches(0)
         p.paragraph_format.first_line_indent = Inches(0.13)
-        add_runs_with_diary_italics(p, line)
+        spans = _find_highlight_spans(line, spellcheck_words)
+        add_runs_with_diary_italics_and_highlight(p, line, spans)
 
     buf = io.BytesIO()
     doc.save(buf)

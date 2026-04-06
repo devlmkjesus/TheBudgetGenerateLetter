@@ -161,7 +161,13 @@ def _fetch_spellcheck_words() -> List[Tuple[str, WD_COLOR_INDEX]]:
         return list(_HIGHLIGHT_CACHE.get("items") or [])
 
     # Supabase REST
-    query = urllib.parse.urlencode({"select": "Word,HighlightColor"})
+    # Filter to this endpoint's client words only.
+    query = urllib.parse.urlencode(
+        {
+            "select": "Word,HighlightColor,Client",
+            "Client": "ilike.*Budget*",
+        }
+    )
     url = f"{supabase_url}/rest/v1/Spellcheck_The_Budget?{query}"
 
     req = urllib.request.Request(

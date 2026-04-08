@@ -204,44 +204,48 @@ def generate_iae_docx_bytes(
     cols.set(qn("w:num"), "2")
     cols.set(qn("w:space"), str(int(Inches(0.48).twips)))
 
-    # Add header with true two-column layout
+    # Add header with proper tab positioning for second column
     header = section.header
     
-    # Create a new paragraph for the header content
-    # First, clear any existing paragraphs
+    # Clear any existing paragraphs
     for para in header.paragraphs:
         para._p.getparent().remove(para._p)
     
-    # Add first paragraph with column break to create two columns
-    header_para = header.add_paragraph()
-    header_para.paragraph_format.space_before = Pt(0)
-    header_para.paragraph_format.space_after = Pt(0)
-    header_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+    # First line: Plural (left) and Date (right-aligned in second column)
+    if safe_plural or safe_date:
+        first_line_para = header.add_paragraph()
+        first_line_para.paragraph_format.space_before = Pt(0)
+        first_line_para.paragraph_format.space_after = Pt(0)
+        first_line_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+        
+        # Set tab stop at 6.75" for second column positioning
+        from docx.enum.text import WD_TAB_ALIGNMENT
+        tab_stops = first_line_para.paragraph_format.tab_stops
+        tab_stops.add_tab_stop(Inches(6.75), WD_TAB_ALIGNMENT.LEFT)
+        
+        if safe_plural:
+            r = first_line_para.add_run(safe_plural)
+            _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
+        
+        if safe_date:
+            # Add tab to move to second column position
+            first_line_para.add_run("\t")
+            r = first_line_para.add_run(safe_date)
+            _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
     
-    # Add Plural in first column
-    if safe_plural:
-        r = header_para.add_run(safe_plural)
-        _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
-    
-    # Add column break to move to second column
-    from docx.oxml import parse_xml
-    column_break_xml = f'<w:br w:type="column" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>'
-    header_para._p.append(parse_xml(column_break_xml))
-    
-    # Add Date in second column
-    if safe_date:
-        r = header_para.add_run(safe_date)
-        _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
-    
-    # Add batchNumber in second column (new line)
+    # Second line: batchNumber (positioned in second column)
     if safe_batch:
         batch_para = header.add_paragraph()
         batch_para.paragraph_format.space_before = Pt(0)
         batch_para.paragraph_format.space_after = Pt(0)
         batch_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
         
-        # Add column break to ensure we're in second column
-        batch_para._p.append(parse_xml(column_break_xml))
+        # Set tab stop at 6.75" for second column positioning
+        tab_stops = batch_para.paragraph_format.tab_stops
+        tab_stops.add_tab_stop(Inches(6.75), WD_TAB_ALIGNMENT.LEFT)
+        
+        # Add tab to move to second column position
+        batch_para.add_run("\t")
         r = batch_para.add_run(safe_batch)
         _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
 

@@ -240,9 +240,9 @@ def generate_iae_docx_bytes(
         batch_para.paragraph_format.space_after = Pt(0)
         batch_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
         
-        # Set tab stop at 6.75" for second column positioning
+        # Set tab stop at 3.48" for second column positioning
         tab_stops = batch_para.paragraph_format.tab_stops
-        tab_stops.add_tab_stop(Inches(6.75), WD_TAB_ALIGNMENT.LEFT)
+        tab_stops.add_tab_stop(Inches(3.48), WD_TAB_ALIGNMENT.LEFT)
         
         # Add tab to move to second column position
         batch_para.add_run("\t")

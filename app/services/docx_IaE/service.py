@@ -195,12 +195,18 @@ def generate_iae_docx_bytes(
     section.right_margin = Inches(1)
 
     # Two columns with 0.48" spacing
-    cols = section._sectPr.xpath("./w:cols")[0]
-    cols.set("num", "2")
-    cols.set("space", str(int(Inches(0.48).twips)))
+    from docx.oxml.ns import qn
+    cols = section._sectPr.xpath("./w:cols")
+    if not cols:
+        cols = section._sectPr.add_new(qn("w:cols"))
+    else:
+        cols = cols[0]
+    cols.set(qn("w:num"), "2")
+    cols.set(qn("w:space"), str(int(Inches(0.48).twips)))
 
-    # Header line: Plural (Times New Roman 12), Date (Times New Roman 12), batchNumber (Times New Roman 12)
-    header_para = doc.add_paragraph()
+    # Add header with Plural, Date, batchNumber (Times New Roman 12)
+    header = section.header
+    header_para = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
     header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
     header_para.paragraph_format.space_before = Pt(0)
     header_para.paragraph_format.space_after = Pt(0)
@@ -222,9 +228,9 @@ def generate_iae_docx_bytes(
         r = header_para.add_run(safe_batch)
         _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
 
-    # Singular line (Times New Roman 10)
+    # Singular line in header (Times New Roman 10)
     if safe_singular:
-        singular_para = doc.add_paragraph()
+        singular_para = header.add_paragraph()
         singular_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         singular_para.paragraph_format.space_before = Pt(0)
         singular_para.paragraph_format.space_after = Pt(0)

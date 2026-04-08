@@ -197,12 +197,18 @@ def generate_diebotschaft_docx_bytes(
     section.right_margin = Inches(0.5)
 
     # Two columns with 0.5" spacing
-    cols = section._sectPr.xpath("./w:cols")[0]
-    cols.set("num", "2")
-    cols.set("space", str(int(Inches(0.5).twips)))
+    from docx.oxml.ns import qn
+    cols = section._sectPr.xpath("./w:cols")
+    if not cols:
+        cols = section._sectPr.add_new(qn("w:cols"))
+    else:
+        cols = cols[0]
+    cols.set(qn("w:num"), "2")
+    cols.set(qn("w:space"), str(int(Inches(0.5).twips)))
 
-    # Header: BatchNumber (Arial 9 bold), State (Times New Roman 10 bold), ChurchDistrict (Times New Roman 10 bold)
-    header_para = doc.add_paragraph()
+    # Add header with variables
+    header = section.header
+    header_para = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
     header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
     header_para.paragraph_format.space_before = Pt(0)
     header_para.paragraph_format.space_after = Pt(0)
@@ -224,22 +230,23 @@ def generate_diebotschaft_docx_bytes(
         r = header_para.add_run(safe_district)
         _set_font(r, name="Times New Roman", size_pt=10, bold=True)
 
-    # Author (Times New Roman 10 italic) and Date (Times New Roman 10)
-    author_date_para = doc.add_paragraph()
-    author_date_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    author_date_para.paragraph_format.space_before = Pt(0)
-    author_date_para.paragraph_format.space_after = Pt(0)
-    author_date_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+    # Author and Date in header (next paragraph)
+    if safe_author or safe_date:
+        author_date_para = header.add_paragraph()
+        author_date_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        author_date_para.paragraph_format.space_before = Pt(0)
+        author_date_para.paragraph_format.space_after = Pt(0)
+        author_date_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
 
-    if safe_author:
-        r = author_date_para.add_run(safe_author)
-        _set_font(r, name="Times New Roman", size_pt=10, bold=False, italic=True)
-
-    if safe_date:
         if safe_author:
-            author_date_para.add_run(" ")
-        r = author_date_para.add_run(safe_date)
-        _set_font(r, name="Times New Roman", size_pt=10, bold=False, italic=False)
+            r = author_date_para.add_run(safe_author)
+            _set_font(r, name="Times New Roman", size_pt=10, bold=False, italic=True)
+
+        if safe_date:
+            if safe_author:
+                author_date_para.add_run(" ")
+            r = author_date_para.add_run(safe_date)
+            _set_font(r, name="Times New Roman", size_pt=10, bold=False, italic=False)
 
     # Body paragraphs with two-column layout
     spellcheck_words = _fetch_spellcheck_words_for_client("DieBotschaft")

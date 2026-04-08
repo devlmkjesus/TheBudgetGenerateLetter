@@ -36,8 +36,8 @@ def create_iae_docx(payload: IaEDocxRequest):
             batchNumber=payload.batchNumber,
             body=payload.body,
         )
-    except ValueError as e:
-        return JSONResponse(status_code=400, content={"success": False, "error": str(e)})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"success": False, "error": str(e)})
 
     if payload.returnBase64:
         return {

@@ -259,6 +259,12 @@ def generate_diebotschaft_docx_bytes(
         date_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.DOUBLE
         r = date_para.add_run(safe_date)
         _set_font(r, name="Times New Roman", size_pt=10, bold=False, italic=False)
+    
+    # Add blank line between Date and body
+    blank_para = doc.add_paragraph()
+    blank_para.paragraph_format.space_before = Pt(0)
+    blank_para.paragraph_format.space_after = Pt(0)
+    blank_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.DOUBLE
 
     # Body paragraphs with two-column layout
     spellcheck_words = _fetch_spellcheck_words_for_client("DieBotschaft")

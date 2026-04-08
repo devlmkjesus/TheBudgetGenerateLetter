@@ -223,43 +223,42 @@ def generate_diebotschaft_docx_bytes(
         r = header_para.add_run(safe_batch)
         _set_font(r, name="Arial", size_pt=9, bold=True)
 
-    # State, ChurchDistrict, Author, Date above body (centered)
-    if safe_state or safe_district or safe_author or safe_date:
-        # First line: State and ChurchDistrict (Times New Roman 10 bold)
-        if safe_state or safe_district:
-            state_district_para = doc.add_paragraph()
-            state_district_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            state_district_para.paragraph_format.space_before = Pt(0)
-            state_district_para.paragraph_format.space_after = Pt(0)
-            state_district_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.DOUBLE
-            
-            if safe_state:
-                r = state_district_para.add_run(safe_state)
-                _set_font(r, name="Times New Roman", size_pt=10, bold=True)
-            
-            if safe_district:
-                if safe_state:
-                    state_district_para.add_run(" ")
-                r = state_district_para.add_run(safe_district)
-                _set_font(r, name="Times New Roman", size_pt=10, bold=True)
-        
-        # Second line: Author (Times New Roman 10 italic) and Date (Times New Roman 10)
-        if safe_author or safe_date:
-            author_date_para = doc.add_paragraph()
-            author_date_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            author_date_para.paragraph_format.space_before = Pt(0)
-            author_date_para.paragraph_format.space_after = Pt(0)
-            author_date_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.DOUBLE
-            
-            if safe_author:
-                r = author_date_para.add_run(safe_author)
-                _set_font(r, name="Times New Roman", size_pt=10, bold=False, italic=True)
-            
-            if safe_date:
-                if safe_author:
-                    author_date_para.add_run(" ")
-                r = author_date_para.add_run(safe_date)
-                _set_font(r, name="Times New Roman", size_pt=10, bold=False, italic=False)
+    # State, ChurchDistrict, Author, Date above body (each on separate line, centered)
+    if safe_state:
+        state_para = doc.add_paragraph()
+        state_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        state_para.paragraph_format.space_before = Pt(0)
+        state_para.paragraph_format.space_after = Pt(0)
+        state_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.DOUBLE
+        r = state_para.add_run(safe_state)
+        _set_font(r, name="Times New Roman", size_pt=10, bold=True)
+    
+    if safe_district:
+        district_para = doc.add_paragraph()
+        district_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        district_para.paragraph_format.space_before = Pt(0)
+        district_para.paragraph_format.space_after = Pt(0)
+        district_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.DOUBLE
+        r = district_para.add_run(safe_district)
+        _set_font(r, name="Times New Roman", size_pt=10, bold=True)
+    
+    if safe_author:
+        author_para = doc.add_paragraph()
+        author_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        author_para.paragraph_format.space_before = Pt(0)
+        author_para.paragraph_format.space_after = Pt(0)
+        author_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.DOUBLE
+        r = author_para.add_run(safe_author)
+        _set_font(r, name="Times New Roman", size_pt=10, bold=False, italic=True)
+    
+    if safe_date:
+        date_para = doc.add_paragraph()
+        date_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        date_para.paragraph_format.space_before = Pt(0)
+        date_para.paragraph_format.space_after = Pt(0)
+        date_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.DOUBLE
+        r = date_para.add_run(safe_date)
+        _set_font(r, name="Times New Roman", size_pt=10, bold=False, italic=False)
 
     # Body paragraphs with two-column layout
     spellcheck_words = _fetch_spellcheck_words_for_client("DieBotschaft")

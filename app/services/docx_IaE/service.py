@@ -216,11 +216,11 @@ def generate_iae_docx_bytes(
         r = header_para.add_run(safe_plural)
         _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
 
-    # Second column: Date (first line) and batchNumber (second line)
+    # Second column: Date (first line) and batchNumber (second line) - right-aligned
     if safe_date or safe_batch:
         # Create a paragraph that starts in second column by adding a column break
         date_para = header.add_paragraph()
-        date_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        date_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         date_para.paragraph_format.space_before = Pt(0)
         date_para.paragraph_format.space_after = Pt(0)
         date_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
@@ -236,7 +236,7 @@ def generate_iae_docx_bytes(
         if safe_batch:
             if safe_date:
                 batch_para = header.add_paragraph()
-                batch_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                batch_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
                 batch_para.paragraph_format.space_before = Pt(0)
                 batch_para.paragraph_format.space_after = Pt(0)
                 batch_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE

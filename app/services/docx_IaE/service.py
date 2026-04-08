@@ -195,9 +195,9 @@ def generate_iae_docx_bytes(
     section.right_margin = Inches(1)
 
     # Two columns with 0.48" spacing
-    section.start_new_section(WD_SECTION.NEW_COLUMN)
-    section._sectPr.xpath("./w:cols")[0].set("num", "2")
-    section._sectPr.xpath("./w:cols")[0].set("space", str(int(Inches(0.48).twips)))
+    cols = section._sectPr.xpath("./w:cols")[0]
+    cols.set("num", "2")
+    cols.set("space", str(int(Inches(0.48).twips)))
 
     # Header line: Plural (Times New Roman 12), Date (Times New Roman 12), batchNumber (Times New Roman 12)
     header_para = doc.add_paragraph()

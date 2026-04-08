@@ -204,47 +204,35 @@ def generate_iae_docx_bytes(
     cols.set(qn("w:num"), "2")
     cols.set(qn("w:space"), str(int(Inches(0.48).twips)))
 
-    # Add header with Plural in first column (left-aligned), Date/batchNumber in second column (left-aligned)
+    # Add header with Plural and Date on same line, batchNumber on next line
     header = section.header
-    # First column: Plural (left-aligned)
-    if safe_plural:
-        header_para = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
-        header_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
-        header_para.paragraph_format.space_before = Pt(0)
-        header_para.paragraph_format.space_after = Pt(0)
-        header_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
-        r = header_para.add_run(safe_plural)
-        _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
-
-    # Second column: Date (first line) and batchNumber (second line) - right-aligned
-    if safe_date or safe_batch:
-        # Create a paragraph that starts in second column by adding a column break
-        date_para = header.add_paragraph()
-        date_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        date_para.paragraph_format.space_before = Pt(0)
-        date_para.paragraph_format.space_after = Pt(0)
-        date_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
-        # Insert column break to move to second column
-        from docx.oxml.ns import qn
-        from docx.text.paragraph import Paragraph
-        from docx.oxml import parse_xml
-        column_break_xml = f'<w:br w:type="column" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>'
-        date_para._p.append(parse_xml(column_break_xml))
-        if safe_date:
-            r = date_para.add_run(safe_date)
+    # First line: Plural (left) and Date (right) on same line
+    if safe_plural or safe_date:
+        first_line_para = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
+        first_line_para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        first_line_para.paragraph_format.space_before = Pt(0)
+        first_line_para.paragraph_format.space_after = Pt(0)
+        first_line_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+        
+        if safe_plural:
+            r = first_line_para.add_run(safe_plural)
             _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
-        if safe_batch:
-            if safe_date:
-                batch_para = header.add_paragraph()
-                batch_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                batch_para.paragraph_format.space_before = Pt(0)
-                batch_para.paragraph_format.space_after = Pt(0)
-                batch_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
-                r = batch_para.add_run(safe_batch)
-                _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
-            else:
-                r = date_para.add_run(safe_batch)
-                _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
+        
+        if safe_date:
+            # Add a tab to push Date to the right
+            first_line_para.add_run("\t")
+            r = first_line_para.add_run(safe_date)
+            _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
+    
+    # Second line: batchNumber (right-aligned)
+    if safe_batch:
+        batch_para = header.add_paragraph()
+        batch_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        batch_para.paragraph_format.space_before = Pt(0)
+        batch_para.paragraph_format.space_after = Pt(0)
+        batch_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+        r = batch_para.add_run(safe_batch)
+        _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
 
     # Singular line above body (centered, double spacing)
     if safe_singular:

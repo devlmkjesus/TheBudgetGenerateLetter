@@ -206,47 +206,60 @@ def generate_diebotschaft_docx_bytes(
     cols.set(qn("w:num"), "2")
     cols.set(qn("w:space"), str(int(Inches(0.5).twips)))
 
-    # Add header with variables
+    # Add header with batchNumber (left-aligned)
     header = section.header
-    header_para = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
-    header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    header_para.paragraph_format.space_before = Pt(0)
-    header_para.paragraph_format.space_after = Pt(0)
-    header_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
-
+    
+    # Clear any existing paragraphs
+    for para in header.paragraphs:
+        para._p.getparent().remove(para._p)
+    
+    # Add batchNumber in header (left-aligned)
     if safe_batch:
+        header_para = header.add_paragraph()
+        header_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        header_para.paragraph_format.space_before = Pt(0)
+        header_para.paragraph_format.space_after = Pt(0)
+        header_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
         r = header_para.add_run(safe_batch)
         _set_font(r, name="Arial", size_pt=9, bold=True)
 
-    if safe_state:
-        if safe_batch:
-            header_para.add_run(" ")
-        r = header_para.add_run(safe_state)
-        _set_font(r, name="Times New Roman", size_pt=10, bold=True)
-
-    if safe_district:
-        if safe_batch or safe_state:
-            header_para.add_run(" ")
-        r = header_para.add_run(safe_district)
-        _set_font(r, name="Times New Roman", size_pt=10, bold=True)
-
-    # Author and Date in header (next paragraph)
-    if safe_author or safe_date:
-        author_date_para = header.add_paragraph()
-        author_date_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        author_date_para.paragraph_format.space_before = Pt(0)
-        author_date_para.paragraph_format.space_after = Pt(0)
-        author_date_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
-
-        if safe_author:
-            r = author_date_para.add_run(safe_author)
-            _set_font(r, name="Times New Roman", size_pt=10, bold=False, italic=True)
-
-        if safe_date:
+    # State, ChurchDistrict, Author, Date above body (centered)
+    if safe_state or safe_district or safe_author or safe_date:
+        # First line: State and ChurchDistrict (Times New Roman 10 bold)
+        if safe_state or safe_district:
+            state_district_para = doc.add_paragraph()
+            state_district_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            state_district_para.paragraph_format.space_before = Pt(0)
+            state_district_para.paragraph_format.space_after = Pt(0)
+            state_district_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.DOUBLE
+            
+            if safe_state:
+                r = state_district_para.add_run(safe_state)
+                _set_font(r, name="Times New Roman", size_pt=10, bold=True)
+            
+            if safe_district:
+                if safe_state:
+                    state_district_para.add_run(" ")
+                r = state_district_para.add_run(safe_district)
+                _set_font(r, name="Times New Roman", size_pt=10, bold=True)
+        
+        # Second line: Author (Times New Roman 10 italic) and Date (Times New Roman 10)
+        if safe_author or safe_date:
+            author_date_para = doc.add_paragraph()
+            author_date_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            author_date_para.paragraph_format.space_before = Pt(0)
+            author_date_para.paragraph_format.space_after = Pt(0)
+            author_date_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.DOUBLE
+            
             if safe_author:
-                author_date_para.add_run(" ")
-            r = author_date_para.add_run(safe_date)
-            _set_font(r, name="Times New Roman", size_pt=10, bold=False, italic=False)
+                r = author_date_para.add_run(safe_author)
+                _set_font(r, name="Times New Roman", size_pt=10, bold=False, italic=True)
+            
+            if safe_date:
+                if safe_author:
+                    author_date_para.add_run(" ")
+                r = author_date_para.add_run(safe_date)
+                _set_font(r, name="Times New Roman", size_pt=10, bold=False, italic=False)
 
     # Body paragraphs with two-column layout
     spellcheck_words = _fetch_spellcheck_words_for_client("DieBotschaft")
@@ -258,7 +271,7 @@ def generate_diebotschaft_docx_bytes(
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
         p.paragraph_format.space_before = Pt(0)
         p.paragraph_format.space_after = Pt(0)
-        p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+        p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.DOUBLE
         p.paragraph_format.left_indent = Inches(0)
         p.paragraph_format.right_indent = Inches(0)
         p.paragraph_format.first_line_indent = Inches(0.13)

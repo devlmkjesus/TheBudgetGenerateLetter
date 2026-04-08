@@ -204,35 +204,58 @@ def generate_iae_docx_bytes(
     cols.set(qn("w:num"), "2")
     cols.set(qn("w:space"), str(int(Inches(0.48).twips)))
 
-    # Add header with Plural and Date on same line, batchNumber on next line
+    # Add header with true two-column layout
     header = section.header
-    # First line: Plural (left) and Date (right) on same line
-    if safe_plural or safe_date:
-        first_line_para = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
-        first_line_para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-        first_line_para.paragraph_format.space_before = Pt(0)
-        first_line_para.paragraph_format.space_after = Pt(0)
-        first_line_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
-        
-        if safe_plural:
-            r = first_line_para.add_run(safe_plural)
-            _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
-        
-        if safe_date:
-            # Add a tab to push Date to the right
-            first_line_para.add_run("\t")
-            r = first_line_para.add_run(safe_date)
-            _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
     
-    # Second line: batchNumber (right-aligned)
-    if safe_batch:
-        batch_para = header.add_paragraph()
-        batch_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        batch_para.paragraph_format.space_before = Pt(0)
-        batch_para.paragraph_format.space_after = Pt(0)
-        batch_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
-        r = batch_para.add_run(safe_batch)
+    # Create two columns in the header
+    from docx.oxml.ns import qn
+    header_cols = header._sectPr.xpath("./w:cols")
+    if not header_cols:
+        header_cols = header._sectPr.add_new(qn("w:cols"))
+    else:
+        header_cols = header_cols[0]
+    header_cols.set(qn("w:num"), "2")
+    header_cols.set(qn("w:space"), str(int(Inches(0.48).twips)))
+    
+    # First column: Plural (left-aligned)
+    if safe_plural:
+        plural_para = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
+        plural_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        plural_para.paragraph_format.space_before = Pt(0)
+        plural_para.paragraph_format.space_after = Pt(0)
+        plural_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+        r = plural_para.add_run(safe_plural)
         _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
+    
+    # Second column: Date and batchNumber (left-aligned within second column)
+    if safe_date or safe_batch:
+        # Add column break to move to second column
+        from docx.oxml import parse_xml
+        column_break_xml = f'<w:br w:type="column" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>'
+        
+        # Date in second column
+        if safe_date:
+            date_para = header.add_paragraph()
+            date_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            date_para.paragraph_format.space_before = Pt(0)
+            date_para.paragraph_format.space_after = Pt(0)
+            date_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+            date_para._p.append(parse_xml(column_break_xml))
+            r = date_para.add_run(safe_date)
+            _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
+        
+        # batchNumber in second column (next line)
+        if safe_batch:
+            batch_para = header.add_paragraph()
+            batch_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            batch_para.paragraph_format.space_before = Pt(0)
+            batch_para.paragraph_format.space_after = Pt(0)
+            batch_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+            # Only add column break if there was no date (to ensure we're in second column)
+            if not safe_date:
+                batch_para._p.append(parse_xml(column_break_xml))
+            r = batch_para.add_run(safe_batch)
+            _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
 
     # Singular line above body (centered, double spacing)
     if safe_singular:

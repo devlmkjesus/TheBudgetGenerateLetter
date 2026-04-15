@@ -216,7 +216,7 @@ def generate_iae_docx_bytes(
         first_line_para = header.add_paragraph()
         first_line_para.paragraph_format.space_before = Pt(0)
         first_line_para.paragraph_format.space_after = Pt(0)
-        first_line_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+        first_line_para.paragraph_format.line_spacing = 1.15  # Multiple line spacing at 1.15
         
         # Set tab stop at 3.48" for second column positioning
         from docx.enum.text import WD_TAB_ALIGNMENT
@@ -238,7 +238,7 @@ def generate_iae_docx_bytes(
         batch_para = header.add_paragraph()
         batch_para.paragraph_format.space_before = Pt(0)
         batch_para.paragraph_format.space_after = Pt(0)
-        batch_para.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+        batch_para.paragraph_format.line_spacing = 1.15  # Multiple line spacing at 1.15
         
         # Set tab stop at 3.48" for second column positioning
         tab_stops = batch_para.paragraph_format.tab_stops
@@ -248,6 +248,12 @@ def generate_iae_docx_bytes(
         batch_para.add_run("\t")
         r = batch_para.add_run(safe_batch)
         _set_font(r, name="Times New Roman", size_pt=12, bold=False, italic=False)
+    
+    # Add blank line at the bottom of header
+    blank_header_para = header.add_paragraph()
+    blank_header_para.paragraph_format.space_before = Pt(0)
+    blank_header_para.paragraph_format.space_after = Pt(0)
+    blank_header_para.paragraph_format.line_spacing = 1.15  # Multiple line spacing at 1.15
 
     # Singular line above body (centered, double spacing)
     if safe_singular:
